@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(tmrlib)
 
-add_definitions(-DROS_BUILD)
-
 find_package(catkin REQUIRED COMPONENTS
   roscpp
 )
@@ -50,6 +48,7 @@ include_directories(include
 
 ## Declare a C++ library
 add_library(tmrdriver
+  src/tmr_logger.cpp
   src/tmr_driver.cpp
   src/tmr_command.cpp
   src/tmr_tmsct_communication.cpp

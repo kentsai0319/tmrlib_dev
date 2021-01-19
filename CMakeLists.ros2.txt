@@ -39,6 +39,7 @@ include_directories(include
 )
 
 add_library(tmrdriver
+  src/tmr_logger.cpp
   src/tmr_driver.cpp
   src/tmr_command.cpp
   src/tmr_tmsct_communication.cpp

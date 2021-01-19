@@ -1,10 +1,12 @@
 #ifdef NO_INCLUDE_DIR
 #include "tmr_driver.h"
-#include "tmr_print.h"
+#include "tmr_logger.h"
 #else
 #include "tmr/tmr_driver.h"
-#include "tmr/tmr_print.h"
+#include "tmr/tmr_logger.h"
 #endif
+
+#include <iostream>
 
 namespace tmr
 {

@@ -9,14 +9,12 @@
 #endif
 
 #ifdef NO_INCLUDE_DIR
-#include "tmr_print.h"
+#include "tmr_logger.h"
 #include "tmr_driver.h"
 #else
-#include "tmr/tmr_print.h"
+#include "tmr/tmr_logger.h"
 #include "tmr/tmr_driver.h"
 #endif
-
-#include <functional>
 
 #ifdef _WIN32
 void init_termios(int echo) {}
