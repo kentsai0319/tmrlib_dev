@@ -31,11 +31,11 @@ catkin_package(
 
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-#CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
 if(COMPILER_SUPPORTS_CXX11)
   set(CMAKE_CXX_FLAGS "-std=c++11")
-#elseif(COMPILER_SUPPORTS_CXX0X)
-#  set(CMAKE_CXX_FLAGS "-std=c++0x")
+elseif(COMPILER_SUPPORTS_CXX14)
+  set(CMAKE_CXX_FLAGS "-std=c++14")
 else()
   message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support.")
 endif()
@@ -48,14 +48,14 @@ include_directories(include
 
 ## Declare a C++ library
 add_library(tmrdriver
-  src/tmr_logger.cpp
-  src/tmr_driver.cpp
-  src/tmr_command.cpp
-  src/tmr_tmsct_communication.cpp
-  src/tmr_tmsvr_communication.cpp
-  src/tmr_communication.cpp
-  src/tmr_robot_state.cpp
-  src/tmr_tmpacket.cpp
+  src/tmrl/driver/driver.cpp
+  src/tmrl/driver/tmsct_client.cpp
+  src/tmrl/driver/script_commands.cpp
+  src/tmrl/driver/tmsvr_client.cpp
+  src/tmrl/driver/robot_state.cpp
+  src/tmrl/comm/client.cpp
+  src/tmrl/comm/packet.cpp
+  src/tmrl/utils/logger.cpp
 )
 target_link_libraries(tmrdriver
   ${catkin_LIBRARIES}
