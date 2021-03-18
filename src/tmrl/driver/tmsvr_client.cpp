@@ -21,10 +21,10 @@ TmsvrClient::TmsvrClient(const std::string &ip, size_t buf_n)
     tmrl_INFO_STREAM("$TMSVR: READ: id: "
       << pack.transaction_id() << ", content:\n" << pack.content());
   };
-  _feedbackCallback = [](const RobotState &rs)
+  _feedbackCallback = [](const RobotState &/*rs*/)
   {
   };
-  _cperrCallback = [](const comm::CperrPacket &pack)
+  _cperrCallback = [](const comm::CperrPacket &/*pack*/)
   {
   };
 }

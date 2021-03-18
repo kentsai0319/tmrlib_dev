@@ -26,7 +26,7 @@ TmsctClient::TmsctClient(const std::string &ip, size_t buf_n)
     tmrl_INFO_STREAM("$TMSTA: res: subcmd: "
       << pack.subcmd() << ", subdata:\n" << pack.subdata());
   };
-  _cperrCallback = [](const comm::CperrPacket &pack)
+  _cperrCallback = [](const comm::CperrPacket &/*pack*/)
   {
   };
 }

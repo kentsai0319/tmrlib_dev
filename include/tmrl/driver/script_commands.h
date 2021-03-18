@@ -35,9 +35,9 @@ std::string wait_queue_tag(int tag, int timeout_ms = 0);
 
 inline std::string stop() { return "StopAndClearBuffer()"; }
 
-inline std::string pause() { return "Pause()"; };
+inline std::string pause() { return "Pause()"; }
 
-inline std::string resume() { return "Resume()"; };
+inline std::string resume() { return "Resume()"; }
 
 std::string IO(IOModule module, IOType type, int pin, float state);
 
