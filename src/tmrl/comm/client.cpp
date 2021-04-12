@@ -307,17 +307,12 @@ bool Client::Connect(int timeout_ms)
 
   if (_connect(_sockfd, _ip.c_str(), _port, timeout_ms) == 0) {
     tmrl_INFO_STREAM("TM_COM: O_NONBLOCK connection is ok");
-  }
-  else {
-    tmrl_INFO_STREAM("TM_COM: O_NONBLOCK connection is fail");
-    _sockfd = -1;
-  }
-  if (_sockfd > 0) {
     tmrl_INFO_STREAM("TM_COM: TM robot is connected. sockfd:=" << _sockfd);
-    //_is_connected = true;
     return true;
   }
   else {
+    tmrl_INFO_STREAM("TM_COM: O_NONBLOCK connection is fail");
+    //_sockfd = -1;
     return false;
   }
 }
