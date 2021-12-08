@@ -312,7 +312,12 @@ bool Client::Connect(int timeout_ms)
   }
   else {
     tmrl_INFO_STREAM("TM_COM: O_NONBLOCK connection is fail");
-    //_sockfd = -1;
+#ifdef _WIN32
+    closesocket((SOCKET)_sockfd);
+#else
+    close(_sockfd);
+#endif
+    _sockfd = -1;
     return false;
   }
 }
