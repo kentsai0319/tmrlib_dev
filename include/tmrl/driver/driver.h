@@ -3,6 +3,7 @@
 #include "tmrl/driver/tmsvr_client.h"
 #include "tmrl/driver/tmsct_client.h"
 #include "tmrl/driver/script_commands.h"
+#include "tmrl/driver/sim_pvt_motion.h"
 
 namespace tmrl
 {
@@ -71,8 +72,16 @@ public:
   void cubic_interp(PvtPoint &p, const PvtPoint &p0, const PvtPoint &p1, double t);
   bool fake_run_pvt_traj(const PvtTraj &pvts);
 
+  void sim_pvt_stop();
+  bool sim_pvt_enter();
+  bool sim_pvt_exit();
+  bool sim_pvt_point(const PvtPoint &point);
+  bool sim_pvt_traj(const PvtTraj &pvts);
+
 private:
   bool _keep_pvt_running = false;
+
+  SimPvtMotion _sim_pvt;
 };
 
 inline bool Driver::send_stick_play()

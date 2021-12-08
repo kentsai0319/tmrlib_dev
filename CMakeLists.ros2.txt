@@ -37,6 +37,7 @@ add_library(tmrdriver
   src/tmrl/driver/driver.cpp
   src/tmrl/driver/tmsct_client.cpp
   src/tmrl/driver/script_commands.cpp
+  src/tmrl/driver/sim_pvt_motion.cpp
   src/tmrl/driver/tmsvr_client.cpp
   src/tmrl/driver/robot_state.cpp
   src/tmrl/comm/client.cpp

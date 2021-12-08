@@ -11,6 +11,7 @@ Driver::Driver(TmsvrClient &svr, TmsctClient &sct)
   : state(svr.robot_state)
   , tmsvr(svr)
   , tmsct(sct)
+  , _sim_pvt(svr.robot_state)
 {
 }
 
@@ -175,6 +176,40 @@ bool Driver::fake_run_pvt_traj(const PvtTraj &pvts)
   if (_keep_pvt_running) {
     _keep_pvt_running = false;
   }
+  return true;
+}
+
+void Driver::sim_pvt_stop()
+{
+  _sim_pvt.stop();
+}
+bool Driver::sim_pvt_enter()
+{
+  _sim_pvt.enter(to_vectorXd(state.joint_angle()));
+  return true;
+}
+bool Driver::sim_pvt_exit()
+{
+  _sim_pvt.exit();
+  return true;
+}
+bool Driver::sim_pvt_point(const PvtPoint &point)
+{
+  _sim_pvt.add_point(point);
+  return true;
+}
+bool Driver::sim_pvt_traj(const PvtTraj &pvts)
+{
+  if (pvts.mode != PvtMode::Joint) return false;
+  if (pvts.points.empty()) return true;
+
+  _sim_pvt.enter(to_vectorXd(state.joint_angle()));
+
+  for (auto &point : pvts.points) {
+    _sim_pvt.add_point(point);
+  }
+  _sim_pvt.exit();
+
   return true;
 }
 
