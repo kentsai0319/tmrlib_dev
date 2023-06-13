@@ -115,6 +115,7 @@ size_t Packet::unpack(const char *bytes, size_t size)
   size_t length = 0;
   char cs = 0;
   bool is_valid = true;
+  bool is_checked = true;
 
   if (size < 9) {
     is_valid = false;
@@ -164,8 +165,11 @@ size_t Packet::unpack(const char *bytes, size_t size)
   ind_b = ind_e;
 
   // check length
-  if (ind_e + length + 6 > size || bytes[ind_e + length] != P_SEPR) {
+  if (ind_e + length + 6 > size) {
     is_valid = false; goto end;
+  }
+  if (bytes[ind_e + length] != P_SEPR) {
+    is_checked = false;
   }
 
   // find and save data, and checksum
@@ -182,7 +186,7 @@ size_t Packet::unpack(const char *bytes, size_t size)
 
   // check checksum (P_CSUM)
   if (bytes[ind_e] != P_CSUM) {
-    is_valid = false; goto end;
+    is_checked = false;
   }
   ++ind_e;
   ind_b = ind_e;
@@ -195,11 +199,7 @@ size_t Packet::unpack(const char *bytes, size_t size)
     ss >> val;
     _checksum = (char)(val);
     if (cs != _checksum) {
-      //packet._is_cs_failed = true;
-      is_valid = false;
-    }
-    else {
-      _is_checked = true;
+      is_checked = false;
     }
   }
   ind_e += 2;
@@ -207,18 +207,19 @@ size_t Packet::unpack(const char *bytes, size_t size)
 
   // check end
   if (bytes[ind_e] != P_END1 || bytes[ind_e + 1] != P_END2) {
-    ++ind_e;
-    is_valid = false; goto end;
+    is_checked = false;
   }
   ind_e += 2;
   ind_b = ind_e;
 
   _size = ind_e;
-  _is_valid = true;
+  _is_checksum_error = !is_checked;
+  _is_valid = is_checked;
 end:
   if (!is_valid) {
     reset();
-    _size = ind_e;
+    _size = size;
+    ind_e = size;
   }
   return ind_e;
 }

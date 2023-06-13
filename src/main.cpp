@@ -32,7 +32,7 @@ int main(int argc, char **argv)
   std::cout << packet2.header_str() << "\n";
   std::cout << packet2.get_data_str() << "\n";
   std::cout << packet2.get_content_str() << "\n";
-  std::cout << packet2.is_checked() << "\n";
+  std::cout << packet2.is_error_checksum() << "\n";
   std::cout << packet2.is_valid() << "\n";
 
   std::string host;

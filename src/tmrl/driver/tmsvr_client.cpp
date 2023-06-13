@@ -7,7 +7,7 @@ namespace driver
 {
 
 TmsvrClient::TmsvrClient(const std::string &ip, size_t buf_n)
-  : ClientThread(ip, 5891, buf_n)
+  : ClientThread(ip, 5891, buf_n, true)
 {
   _hdr = "TM_SVR";
   _responseCallback = [](const comm::TmsvrPacket &pack)
@@ -34,7 +34,10 @@ bool TmsvrClient::send_content(
 {
   comm::TmsvrPacket tmsvr;
   tmsvr.set_content(id, mode, content);
-  return (_client.send_packet_all(tmsvr, comm::Client::LOG_INFO) == comm::RetCode::OK);
+  comm::RetCode rc = _client.send_packet_all(tmsvr, comm::Client::LOG_INFO);
+  if (rc == comm::RetCode::ERR) 
+    set_reconnet();
+  return (rc == comm::RetCode::OK);
 }
 
 bool TmsvrClient::receive(const std::vector<comm::Packet> &pack_vec)

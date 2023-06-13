@@ -104,6 +104,8 @@ RetCode RecvBuf::spin_once(int timeval_ms, int *n)
   RetCode rc = RetCode::OK;
   int nb = 0;
   int rv = 0;
+  int err = 0;
+  int err_len = 0;
   //int sp = 0;
   timeval tv;
 
@@ -164,6 +166,8 @@ Client::Client(const std::string &ip, unsigned short port, size_t buffer_size)
   , _optflag(1)
   , _recv_rc(RetCode::OK)
   , _recv_ready(false)
+  , _ok_last(false)
+  , _incomplete_cnt(0)
 {
   tmrl_DEBUG_STREAM("tmrl::comm::Client::Client");
 
@@ -368,16 +372,21 @@ RetCode Client::send_bytes_all(const char *bytes, int len, int *n)
   int ntotal = 0;
   int nb = 0;
   int nleft = len;
+  int cnt = 0;
 
   while (ntotal < len) {
-    nb = send(_sockfd, bytes, nleft, 0);
+    nb = send(_sockfd, bytes + ntotal, nleft, 0);
+    tmrl_WARN_STREAM("nb:=" << nb);
     if (nb < 0) {
       rc = RetCode::ERR;
       break;
     }
     ntotal += nb;
     nleft -= nb;
+    ++cnt;
   }
+  //if (nb >= 0 && cnt > 1) tmrl_WARN_STREAM("send all bytes in " << cnt << " times");
+  tmrl_WARN_STREAM("send all bytes in " << cnt << " times");
   if (n) *n = ntotal;
   return rc;
 }
@@ -409,6 +418,8 @@ RetCode Client::send_packet_(Packet &packet, bool info)
 
 bool Client::init_receiver()
 {
+  _ok_last = false;
+  _incomplete_cnt = 0;
   _recv_ready = _recv->init(_sockfd);
   return _recv_ready;
 }
@@ -416,15 +427,12 @@ RetCode Client::receiver_spin_once(int timeval_ms, int *n)
 {
   RetCode rc = RetCode::OK;
 
-  //if (n) *n = 0;
-
   // spin once
   int nb = 0;
   rc = _recv->spin_once(timeval_ms, &nb);
 
   if (n) *n = nb;
 
-  // error handling
   if (rc != RetCode::OK) {
     _recv_rc = rc;
     return rc;
@@ -433,48 +441,63 @@ RetCode Client::receiver_spin_once(int timeval_ms, int *n)
   // find packet
   int loop_cnt = 0;
   int pack_cnt = 0;
-  char *bdata = NULL;
-  size_t blen = 0;
   size_t size = 0;
-  size_t len = 0;
-  bool cs = false;
-  bool ok = false;
+  size_t invalid_cnt = 0;
 
-  while (loop_cnt < 10 || pack_cnt < 10) {
+  while (true) {
 
-    blen = _recv->buffer().size();
+    if (loop_cnt == 10 || pack_cnt == 10) {
+      if (pack_cnt == 10)
+        tmrl_WARN_STREAM("TM_COM: finding packet, packet count >= 10");
+      else
+        tmrl_ERROR_STREAM("TM_COM: finding packet, loop count >= 10");
+      break;
+    }
+
+    size_t blen = _recv->buffer().size();
     if (blen < 9) {
       break;
     }
-    bdata = _recv->buffer().data();
+    char *bdata = _recv->buffer().data();
 
     //tmrl_DEBUG_STREAM("data: " << bdata << ", " << loop_cnt);
 
     ++size;
     _packet_vec.resize(size);
 
-    len = _packet_vec.back().unpack(bdata, blen);
+    size_t len = _packet_vec.back().unpack(bdata, blen);
 
-    cs = _packet_vec.back().is_checked();
-    ok = _packet_vec.back().is_valid();
+    const bool ok = _packet_vec.back().is_valid();
+    const bool ec = _packet_vec.back().is_checksum_error();
 
-    if (ok || !cs) {
-      _recv->buffer().pop_front(len);
-    }
-    if (!cs) {
-      tmrl_ERROR_STREAM("TM_COM: checksum error! cs: "
-        << (int)(_packet_vec.back().checksum())
-        << " len: " << len);
-    }
     if (ok) {
+      if (!_ok_last) {
+        tmrl_DEBUG_STREAM("TM_COM: complete incomplete packet, len: " << len);
+      }
       ++pack_cnt;
+      _recv->buffer().pop_front(len);
+      _incomplete_cnt = 0;
+      _ok_last = true;
     }
     else {
-      tmrl_ERROR_STREAM("TM_COM: invalid packet");
-      if (size > 1) {
-        _packet_vec.resize(size - 1);
+      ++_incomplete_cnt;
+      if (_ok_last) {
+        tmrl_DEBUG_STREAM("TM_COM: incomplete/(invalid) packet, len: " << len);
       }
-      //if (pack_cnt != 0) break;
+      else {
+        tmrl_ERROR_STREAM("TM_COM: invalid/(incomplete) packet, len: " << len);
+      }
+      if (_incomplete_cnt == 10) {
+        tmrl_ERROR_STREAM("TM_COM: too many invalid/incomplete packet");
+        _incomplete_cnt = 0;
+      }
+      if (ec) {
+        tmrl_ERROR_STREAM("TM_COM: checksum error! cs: " << (int)(_packet_vec.back().checksum()));
+        _recv->buffer().pop_front(len);
+      }
+      --size;
+      _packet_vec.resize(size);
+      _ok_last = false;
       break;
     }
     ++loop_cnt;
@@ -487,8 +510,9 @@ RetCode Client::receiver_spin_once(int timeval_ms, int *n)
 }
 
 
-ClientThread::ClientThread(const std::string &ip, unsigned short port, size_t buffer_size)
+ClientThread::ClientThread(const std::string &ip, unsigned short port, size_t buffer_size, bool cyclic)
   :_client(ip, port, buffer_size)
+  , _is_cyclic(cyclic)
 {
   tmrl_DEBUG_STREAM("tmrl::comm::ClientThread::ClientThread");
 
@@ -526,14 +550,22 @@ void ClientThread::run()
     if (!_client.init_receiver()) {
       tmrl_INFO_STREAM(_hdr << ": is not connected");
     }
+    _reconnect = false;
+    RetCode rc_last = RetCode::OK;
     while (isOk() && _client.is_connected()) {
       int n;
       auto rc = _client.receiver_spin_once(1000, &n);
       //tmrl_DEBUG_STREAM(_hdr << ": rc: " << (int)(rc) << " n: " << n);
-      if (rc == RetCode::ERR ||
+      if (_reconnect ||
+          rc == RetCode::ERR ||
           rc == RetCode::NOTREADY ||
           rc == RetCode::NOTCONNECT) {
         break;
+      }
+      if (rc == RetCode::TIMEOUT) {
+        if (_is_cyclic && rc_last == RetCode::TIMEOUT) {
+          break;
+        }
       }
       if (rc == RetCode::OK) {
         //tmrl_DEBUG_STREAM(_hdr << ": pn: " << _client.packet_vector().size());
@@ -541,6 +573,7 @@ void ClientThread::run()
           break;
         }
       }
+      rc_last = rc;
     }
     _client.Close();
 
@@ -553,26 +586,29 @@ void ClientThread::reconnect()
 {
   if (!isOk()) return;
 
-  if (_reconnect_timeval_ms < 0) {
+  const int tv = _reconnect_timeval_ms;
+  const int to = _reconnect_timeout_ms;
+
+  if (tv < 0) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     return;
   }
-  else if (_reconnect_timeval_ms <= 0) {
+  else if (tv >= 0 && tv < 100) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
   tmrl_INFO_STREAM(_hdr << ": reconnect in ");
   int cnt = 0;
-  while (isOk() && cnt < _reconnect_timeval_ms) {
+  while (isOk() && cnt < tv) {
     if (cnt % 500 == 0) {
-      tmrl_INFO_STREAM(0.001 * (_reconnect_timeval_ms - cnt) << " sec...");
+      tmrl_INFO_STREAM(0.001 * (tv - cnt) << " sec...");
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     cnt += 10;
   }
-  if (isOk() && _reconnect_timeval_ms >= 0) {
+  if (isOk() && tv >= 0) {
     tmrl_INFO_STREAM("0 sec.");
-    tmrl_INFO_STREAM(_hdr << ": connect( " << _reconnect_timeout_ms << " ms )...");
-    _client.Connect(_reconnect_timeout_ms);
+    tmrl_INFO_STREAM(_hdr << ": connect( " << to << " ms )...");
+    _client.Connect(to);
   }
 }
 

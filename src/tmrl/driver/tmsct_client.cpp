@@ -35,13 +35,20 @@ bool TmsctClient::send_script(const std::string &id, const std::string script, b
 {
   comm::TmsctPacket tmsct;
   tmsct.set_script(id, script);
-  return (_client.send_packet_all(tmsct, info) == comm::RetCode::OK);
+  comm::RetCode rc = _client.send_packet_all(tmsct, info);
+  tmrl_WARN_STREAM("rc:=" << (int)rc);
+  if (rc == comm::RetCode::ERR) 
+    set_reconnet();
+  return (rc == comm::RetCode::OK);
 }
 bool TmsctClient::send_sta_request(const std::string &subcmd, const std::string &subdata)
 {
   comm::TmstaPacket tmsta;
   tmsta.set_subdata(subcmd, subdata);
-  return (_client.send_packet_all(tmsta, comm::Client::LOG_INFO) == comm::RetCode::OK);
+  comm::RetCode rc = _client.send_packet_all(tmsta, comm::Client::LOG_INFO);
+  if (rc == comm::RetCode::ERR) 
+    set_reconnet();
+  return (rc == comm::RetCode::OK);
 }
 
 bool TmsctClient::receive(const std::vector<comm::Packet> &pack_vec)

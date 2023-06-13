@@ -72,6 +72,8 @@ private:
   int            _optflag;
   RetCode        _recv_rc;
   bool           _recv_ready;
+  bool           _ok_last;
+  int            _incomplete_cnt;
 
   std::vector<Packet> _packet_vec;
 };
@@ -81,7 +83,7 @@ class ClientThread
 public:
   using IsOkPredicate = std::function<bool()>;
 
-  explicit ClientThread(const std::string &ip, unsigned short port, size_t buffer_size);
+  explicit ClientThread(const std::string &ip, unsigned short port, size_t buffer_size, bool cyclic = false);
   virtual ~ClientThread();
 
   const Client & client() const { return _client; }
@@ -94,6 +96,8 @@ public:
 
   void set_reconnect_timeval(double sec) { _reconnect_timeval_ms = (int)(1000.0 * sec); }
   void set_reconnect_timeout(double sec) { _reconnect_timeout_ms = (int)(1000.0 * sec); }
+
+  void set_reconnet() { _reconnect = true; }
 
 protected:
   virtual bool receive(const std::vector<Packet> &pack_vec) = 0;
@@ -109,6 +113,8 @@ protected:
   IsOkPredicate _isOk;
   int _reconnect_timeval_ms = 3000;
   int _reconnect_timeout_ms = 1000;
+  bool _reconnect = false;
+  const bool _is_cyclic;
 };
 
 }

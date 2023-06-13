@@ -57,7 +57,7 @@ public:
     //_data.clear();
     _size = 0;
     _checksum = 0;
-    _is_checked = false;
+    _is_checksum_error = false;
     _is_valid = false;
   }
 
@@ -81,7 +81,7 @@ public:
 
   size_t size() const { return _size; }
   char checksum() const { return _checksum; }
-  bool is_checked() const { return _is_checked; }
+  bool is_checksum_error() const { return _is_checksum_error; }
   bool is_valid() const { return _is_valid; }
 
 protected:
@@ -94,7 +94,7 @@ protected:
 
   size_t _size = 0;
   char _checksum = 0;
-  bool _is_checked = false;
+  bool _is_checksum_error = false;
   bool _is_valid = false;
 
   // static helpers
