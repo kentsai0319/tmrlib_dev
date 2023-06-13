@@ -78,7 +78,7 @@ private:
     std::bind(&SimPvtMotion::moving, this)
   };
 
-  // std::thread pvt_thread_;
+  std::thread pvt_thread_;
 };
 
 }

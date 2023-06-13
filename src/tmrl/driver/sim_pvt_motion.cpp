@@ -17,12 +17,15 @@ SimPvtMotion::SimPvtMotion(RobotState &state)
   pvt_curr_.positions = to_vectorXd(rs_.joint_angle());
   pvt_curr_.velocities = std::vector<double>(rs_.DOF, 0.0);
   pvt_trgt_ = pvt_curr_;
+
+  keep_alive_ = true;
+  pvt_thread_ = std::thread(std::bind(&SimPvtMotion::run, this));
 }
 
 void SimPvtMotion::stop()
 {
   keep_alive_ = enabled = false;
-  //if (pvt_thread_.joinable()) pvt_thread_.join();
+  if (pvt_thread_.joinable()) pvt_thread_.join();
 }
 
 void SimPvtMotion::enter(const vectorXd &init_joint_angle)
@@ -30,14 +33,14 @@ void SimPvtMotion::enter(const vectorXd &init_joint_angle)
   if (enabled) return;
 
   enabled = true;
-  keep_alive_ = true;
+  // keep_alive_ = true;
 
   const size_t dof = rs_.DOF;
   const vector6d zeros{0};
   rs_.set_joint_states(to_arrayd<dof>(init_joint_angle), zeros, zeros);
 
   //pvt_thread_ = std::thread(std::bind(&SimPvtMotion::run, this));
-  std::thread(std::bind(&SimPvtMotion::run, this)).detach();
+  // std::thread(std::bind(&SimPvtMotion::run, this)).detach();
 }
 void SimPvtMotion::exit()
 {
@@ -171,8 +174,9 @@ void SimPvtMotion::run()
 
   while (keep_alive_)
   {
-    if (!enabled && pvt_count_ == 0) break;
-
+    // if (!enabled && pvt_count_ == 0) break;
+    while (enabled || pvt_count_ != 0)
+    {
     state = state_func[state]();
 
     // update joint state every 50ms
@@ -195,6 +199,8 @@ void SimPvtMotion::run()
     cnt_ct = (cnt_ct + 1) % 100;
 
     if (slp) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
   tmrl_INFO_STREAM("pvt thread end");
 }

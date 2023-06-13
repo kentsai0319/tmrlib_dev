@@ -140,7 +140,7 @@ size_t RobotState::_deserialize_first_time(const char *data, size_t size, bool l
 
   for (auto iter : _data_table->get()) {
     if (iter.second.required && !iter.second.checked) {
-      tmrl_ERROR_STREAM("Required item" << iter.first << " is NOT checked");
+      tmrl_ERROR_STREAM("Required item " << iter.first << " is NOT checked");
     }
   }
 
